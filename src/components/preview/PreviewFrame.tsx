@@ -15,6 +15,39 @@ export function PreviewFrame() {
   const [entryPoint, setEntryPoint] = useState<string>("/App.jsx");
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
+  // When the iframe captures focus, restore parent window focus on the next mousedown
+  // so that clicking toggle buttons after interacting with the preview works on the first click
+  useEffect(() => {
+    let pendingHandler: ((e: MouseEvent) => void) | null = null;
+
+    const onWindowBlur = () => {
+      pendingHandler = () => {
+        window.focus();
+        document.removeEventListener("mousedown", pendingHandler!, true);
+        pendingHandler = null;
+      };
+      document.addEventListener("mousedown", pendingHandler, true);
+    };
+
+    const onWindowFocus = () => {
+      if (pendingHandler) {
+        document.removeEventListener("mousedown", pendingHandler, true);
+        pendingHandler = null;
+      }
+    };
+
+    window.addEventListener("blur", onWindowBlur);
+    window.addEventListener("focus", onWindowFocus);
+
+    return () => {
+      window.removeEventListener("blur", onWindowBlur);
+      window.removeEventListener("focus", onWindowFocus);
+      if (pendingHandler) {
+        document.removeEventListener("mousedown", pendingHandler, true);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     const updatePreview = () => {
       try {
